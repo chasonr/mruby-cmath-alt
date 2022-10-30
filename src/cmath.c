@@ -130,19 +130,19 @@ typedef float _Complex mrb_complex;
 typedef double _Complex mrb_complex;
 #endif  /*  MRB_USE_FLOAT32 */
 
-static inline double creal(double _Complex c)
+static inline mrb_float creal(mrb_complex c)
 {
     return __real__(c);
 }
 
-static inline double cimag(double _Complex c)
+static inline mrb_float cimag(mrb_complex c)
 {
     return __imag__(c);
 }
 
-static inline double _Complex CX(double r, double i)
+static inline mrb_complex CX(mrb_float r, mrb_float i)
 {
-    double _Complex c;
+    mrb_complex c;
     __real__(c) = r;
     __imag__(c) = i;
     return c;
