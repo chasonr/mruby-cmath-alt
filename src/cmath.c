@@ -5,8 +5,9 @@
 */
 
 /*
-** This `mruby-cmath` gem uses C99 _Complex features
-** You need C compiler that support C99+
+** This `mruby-cmath-alt` gem uses C99 _Complex features and GCC extensions,
+** but not complex.h.
+** You need a version of GCC that supports C99+.
 */
 
 #include <mruby.h>
@@ -15,10 +16,26 @@
 # error CMath conflicts with 'MRB_NO_FLOAT' configuration
 #endif
 
-#include <complex.h>
-
 mrb_value mrb_complex_new(mrb_state *mrb, mrb_float real, mrb_float imag);
 void mrb_complex_get(mrb_state *mrb, mrb_value cpx, mrb_float*, mrb_float*);
+
+//////////////////////////////////////////////////////////////////////////////
+extern double _Complex cexp(double _Complex c);
+extern double _Complex clog(double _Complex c);
+extern double _Complex csqrt(double _Complex c);
+extern double _Complex csin(double _Complex c);
+extern double _Complex ccos(double _Complex c);
+extern double _Complex ctan(double _Complex c);
+extern double _Complex casin(double _Complex c);
+extern double _Complex cacos(double _Complex c);
+extern double _Complex catan(double _Complex c);
+extern double _Complex csinh(double _Complex c);
+extern double _Complex ccosh(double _Complex c);
+extern double _Complex ctanh(double _Complex c);
+extern double _Complex casinh(double _Complex c);
+extern double _Complex cacosh(double _Complex c);
+extern double _Complex catanh(double _Complex c);
+//////////////////////////////////////////////////////////////////////////////
 
 static mrb_bool
 cmath_get_complex(mrb_state *mrb, mrb_value c, mrb_float *r, mrb_float *i)
@@ -113,7 +130,23 @@ typedef float _Complex mrb_complex;
 typedef double _Complex mrb_complex;
 #endif  /*  MRB_USE_FLOAT32 */
 
-#define CX(r,i) ((r)+(i)*_Complex_I)
+static inline double creal(double _Complex c)
+{
+    return __real__(c);
+}
+
+static inline double cimag(double _Complex c)
+{
+    return __imag__(c);
+}
+
+static inline double _Complex CX(double r, double i)
+{
+    double _Complex c;
+    __real__(c) = r;
+    __imag__(c) = i;
+    return c;
+}
 #endif
 
 #define CXDIVf(x,y) (x)/(y)
@@ -233,7 +266,7 @@ DEF_CMATH_METHOD(atanh)
 /* ------------------------------------------------------------------------*/
 
 void
-mrb_mruby_cmath_gem_init(mrb_state* mrb)
+mrb_mruby_cmath_alt_gem_init(mrb_state* mrb)
 {
   struct RClass *cmath;
   cmath = mrb_define_module(mrb, "CMath");
@@ -264,6 +297,6 @@ mrb_mruby_cmath_gem_init(mrb_state* mrb)
 }
 
 void
-mrb_mruby_cmath_gem_final(mrb_state* mrb)
+mrb_mruby_cmath_alt_gem_final(mrb_state* mrb)
 {
 }

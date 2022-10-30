@@ -1,6 +1,7 @@
-# This `mruby-cmath` gem uses C99 _Complex features
-# You need C compiler that support C99+
-MRuby::Gem::Specification.new('mruby-cmath') do |spec|
+# This `mruby-cmath-alt` gem uses C99 _Complex features and GCC extensions,
+# but not complex.h.
+# You need a version of GCC that supports C99+.
+MRuby::Gem::Specification.new('mruby-cmath-alt') do |spec|
   spec.license = 'MIT'
   spec.author  = 'mruby developers'
   spec.summary = 'standard Math module with complex'
