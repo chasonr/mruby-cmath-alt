@@ -19,24 +19,6 @@
 mrb_value mrb_complex_new(mrb_state *mrb, mrb_float real, mrb_float imag);
 void mrb_complex_get(mrb_state *mrb, mrb_value cpx, mrb_float*, mrb_float*);
 
-//////////////////////////////////////////////////////////////////////////////
-extern double _Complex cexp(double _Complex c);
-extern double _Complex clog(double _Complex c);
-extern double _Complex csqrt(double _Complex c);
-extern double _Complex csin(double _Complex c);
-extern double _Complex ccos(double _Complex c);
-extern double _Complex ctan(double _Complex c);
-extern double _Complex casin(double _Complex c);
-extern double _Complex cacos(double _Complex c);
-extern double _Complex catan(double _Complex c);
-extern double _Complex csinh(double _Complex c);
-extern double _Complex ccosh(double _Complex c);
-extern double _Complex ctanh(double _Complex c);
-extern double _Complex casinh(double _Complex c);
-extern double _Complex cacosh(double _Complex c);
-extern double _Complex catanh(double _Complex c);
-//////////////////////////////////////////////////////////////////////////////
-
 static mrb_bool
 cmath_get_complex(mrb_state *mrb, mrb_value c, mrb_float *r, mrb_float *i)
 {
@@ -79,7 +61,7 @@ typedef _Dcomplex mrb_complex;
 static mrb_complex
 CXDIVf(mrb_complex x, mrb_float y)
 {
-  return CX(creal(x)/y, cimag(x)/y);
+  return cmath_build_complex(cmath_creal(x)/y, cmath_cimag(x)/y);
 }
 
 static mrb_complex
@@ -88,23 +70,23 @@ CXDIVc(mrb_complex a, mrb_complex b)
   mrb_float ratio, den;
   mrb_float abr, abi, cr, ci;
 
-  if ((abr = creal(b)) < 0)
+  if ((abr = cmath_creal(b)) < 0)
     abr = - abr;
-  if ((abi = cimag(b)) < 0)
+  if ((abi = cmath_cimag(b)) < 0)
     abi = - abi;
   if (abr <= abi) {
-    ratio = creal(b) / cimag(b) ;
-    den = cimag(a) * (1 + ratio*ratio);
-    cr = (creal(a)*ratio + cimag(a)) / den;
-    ci = (cimag(a)*ratio - creal(a)) / den;
+    ratio = cmath_creal(b) / cmath_cimag(b) ;
+    den = cmath_cimag(a) * (1 + ratio*ratio);
+    cr = (cmath_creal(a)*ratio + cmath_cimag(a)) / den;
+    ci = (cmath_cimag(a)*ratio - cmath_creal(a)) / den;
   }
   else {
-    ratio = cimag(b) / creal(b) ;
-    den = creal(a) * (1 + ratio*ratio);
-    cr = (creal(a) + cimag(a)*ratio) / den;
-    ci = (cimag(a) - creal(a)*ratio) / den;
+    ratio = cmath_cimag(b) / cmath_creal(b) ;
+    den = cmath_creal(a) * (1 + ratio*ratio);
+    cr = (cmath_creal(a) + cmath_cimag(a)*ratio) / den;
+    ci = (cmath_cimag(a) - cmath_creal(a)*ratio) / den;
   }
-  return CX(cr, ci);
+  return cmath_build_complex(cr, ci);
 }
 
 #else
@@ -120,7 +102,6 @@ typedef std::complex<double> mrb_complex;
 #define CX(r,i) mrb_complex(r,i)
 #define creal(c) c.real()
 #define cimag(c) c.imag()
-#define FC(n) F(n)
 
 #else  /* cpp */
 
@@ -130,32 +111,50 @@ typedef float _Complex mrb_complex;
 typedef double _Complex mrb_complex;
 #endif  /*  MRB_USE_FLOAT32 */
 
-static inline mrb_float creal(mrb_complex c)
+static mrb_complex
+cmath_build_complex(mrb_float x, mrb_float y)
 {
-    return __real__(c);
+#ifdef __GNUC__
+  return __builtin_complex(x, y);
+#else
+  union { mrb_float r[2]; mrb_complex c; } u;
+
+  u.r[0] = x;
+  u.r[1] = y;
+  return u.c;
+#endif
 }
 
-static inline mrb_float cimag(mrb_complex c)
+static mrb_float
+cmath_creal(mrb_complex c)
 {
-    return __imag__(c);
+#ifdef __GNUC__
+  return __real__(c);
+#else
+  union { mrb_float r[2]; mrb_complex c; } u;
+
+  u.c = c;
+  return u.r[0];
+#endif
 }
 
-static inline mrb_complex CX(mrb_float r, mrb_float i)
+static mrb_float
+cmath_cimag(mrb_complex c)
 {
-    mrb_complex c;
-    __real__(c) = r;
-    __imag__(c) = i;
-    return c;
+#ifdef __GNUC__
+  return __imag__(c);
+#else
+  union { mrb_float r[2]; mrb_complex c; } u;
+
+  u.c = c;
+  return u.r[1];
+#endif
 }
 #endif
 
 #define CXDIVf(x,y) (x)/(y)
 #define CXDIVc(x,y) (x)/(y)
 
-#endif
-
-#ifndef FC
-#define FC(n) F(c ## n)
 #endif
 
 #define DEF_CMATH_METHOD(name) \
@@ -165,11 +164,257 @@ cmath_ ## name(mrb_state *mrb, mrb_value self)\
   mrb_value z = mrb_get_arg1(mrb);\
   mrb_float real, imag;\
   if (cmath_get_complex(mrb, z, &real, &imag)) {\
-    mrb_complex c = CX(real,imag);\
-    c = FC(name)(c);\
-    return mrb_complex_new(mrb, creal(c), cimag(c));\
+    mrb_complex c = cmath_build_complex(real,imag);\
+    c = cmath_c ## name(c);\
+    return mrb_complex_new(mrb, cmath_creal(c), cmath_cimag(c));\
   }\
   return mrb_float_value(mrb, F(name)(real));\
+}
+
+static mrb_complex
+cmath_cexp(mrb_complex c)
+{
+  mrb_float x = cmath_creal(c);
+  mrb_float y = cmath_cimag(c);
+  mrb_float r = F(exp)(x);
+  return cmath_build_complex(r*F(cos)(y), r*F(sin)(y));
+}
+
+static mrb_complex
+cmath_clog(mrb_complex c)
+{
+  mrb_float x = cmath_creal(c);
+  mrb_float y = cmath_cimag(c);
+  mrb_float r = F(hypot)(x, y);
+  mrb_float t = F(atan2)(y, x);
+  return cmath_build_complex(F(log)(r), t);
+}
+
+static mrb_complex
+cmath_csqrt(mrb_complex c)
+{
+  mrb_float x = cmath_creal(c);
+  mrb_float y = cmath_cimag(c);
+
+  if (y == 0.0F) {
+    if (x >= 0.0F) {
+      return cmath_build_complex(F(sqrt)(+x), 0.0F);
+    } else {
+      return cmath_build_complex(0.0F, F(sqrt)(-x));
+    }
+  } else {
+#ifdef MRB_USE_FLOAT32
+    static const float cutoff = 1e38;
+#else
+    static const double cutoff = 1e308;
+#endif
+    _Bool scale = (F(fabs)(x) > cutoff || (F(fabs)(y) > cutoff));
+    if (scale) {
+      /* Prevent hypot from overflowing */
+      x /= 4.0F;
+      y /= 4.0F;
+    }
+    mrb_float r = F(hypot)(x, y);
+    mrb_float t = F(atan2)(y, x);
+    r = F(sqrt)(r);
+    t /= 2.0F;
+    if (scale) {
+      r *= 2.0F;
+    }
+    return cmath_build_complex(r*F(cos)(t), r*F(sin)(t));
+  }
+}
+
+static mrb_complex
+cmath_csin(mrb_complex c)
+{
+  mrb_float x = cmath_creal(c);
+  mrb_float y = cmath_cimag(c);
+  mrb_float cx = F(cos)(x);
+  mrb_float sx = F(sin)(x);
+  mrb_float cy = F(cosh)(y);
+  mrb_float sy = F(sinh)(y);
+  return cmath_build_complex(sx*cy, cx*sy);
+}
+
+static mrb_complex
+cmath_ccos(mrb_complex c)
+{
+  mrb_float x = cmath_creal(c);
+  mrb_float y = cmath_cimag(c);
+  mrb_float cx = F(cos)(x);
+  mrb_float sx = F(sin)(x);
+  mrb_float cy = F(cosh)(y);
+  mrb_float sy = F(sinh)(y);
+  return cmath_build_complex(cx*cy, -sx*sy);
+}
+
+static mrb_complex
+cmath_ctan(mrb_complex c)
+{
+#ifdef MRB_USE_FLOAT32
+  static const float cutoff1 = 53.0F;
+  static const float cutoff2 = 0x1.0A2B24P+3F;
+#else
+  static const double cutoff1 = 373.0;
+  static const double cutoff2 = 0x1.3001004048044P+4;
+#endif
+  mrb_float x = cmath_creal(c);
+  mrb_float y = cmath_cimag(c);
+  mrb_float cx = F(cos)(x);
+  mrb_float sx = F(sin)(x);
+  mrb_complex w;
+
+  if (F(fabs)(y) > cutoff1) {
+    /* Cutoff above which real(w) == 0.0 */
+    w = cmath_build_complex(F(copysign)(0.0F, sx*cx), F(copysign)(1.0F, y));
+  } else if (F(fabs)(y) > cutoff2) {
+    /* Cutoff above which |sy| == cy */
+    mrb_float cy = F(cosh)(y);
+    /* Not (sx*cx)/(cy*cy); cy*cy might overflow */
+    w = cmath_build_complex(sx*cx/cy/cy, F(copysign)(1.0F, y));
+  } else {
+    mrb_float cy = F(cosh)(y);
+    mrb_float sy = F(sinh)(y);
+    mrb_float d = cx*cx*cy*cy + sx*sx*sy*sy;
+    w = cmath_build_complex(sx*cx/d, sy*cy/d);
+  }
+  return w;
+}
+
+static mrb_complex
+cmath_csinh(mrb_complex c)
+{
+  mrb_float x = cmath_creal(c);
+  mrb_float y = cmath_cimag(c);
+  mrb_float cx = F(cosh)(x);
+  mrb_float sx = F(sinh)(x);
+  mrb_float cy = F(cos)(y);
+  mrb_float sy = F(sin)(y);
+  return cmath_build_complex(sx*cy, cx*sy);
+}
+
+static mrb_complex
+cmath_ccosh(mrb_complex c)
+{
+  mrb_float x = cmath_creal(c);
+  mrb_float y = cmath_cimag(c);
+  mrb_float cx = F(cosh)(x);
+  mrb_float sx = F(sinh)(x);
+  mrb_float cy = F(cos)(y);
+  mrb_float sy = F(sin)(y);
+  return cmath_build_complex(cx*cy, sx*sy);
+}
+
+static mrb_complex
+cmath_ctanh(mrb_complex c)
+{
+#ifdef MRB_USE_FLOAT32
+  static const float cutoff1 = 53.0F;
+  static const float cutoff2 = 0x1.0A2B24P+3F;
+#else
+  static const double cutoff1 = 373.0;
+  static const double cutoff2 = 0x1.3001004048044P+4;
+#endif
+  mrb_float x = cmath_creal(c);
+  mrb_float y = cmath_cimag(c);
+  mrb_float cy = F(cos)(y);
+  mrb_float sy = F(sin)(y);
+  mrb_complex w;
+
+  if (F(fabs)(x) > cutoff1) {
+    /* Cutoff above which imag(w) == 0.0 */
+    w = cmath_build_complex(F(copysign)(1.0F, x), 0.0F);
+  } else if (F(fabs)(x) > cutoff2) {
+    /* Cutoff above which |sx| == cx */
+    mrb_float cx = F(cosh)(x);
+    /* Not (sy*cy)/(cx*cx); cx*cx might overflow */
+    w = cmath_build_complex(F(copysign)(1.0F, x), sy*cy/cx/cx);
+  } else {
+    mrb_float cx = F(cosh)(x);
+    mrb_float sx = F(sinh)(x);
+    mrb_float d = cx*cx*cy*cy + sx*sx*sy*sy;
+    w = cmath_build_complex(sx*cx/d, sy*cy/d);
+  }
+  return w;
+}
+
+static mrb_complex
+cmath_casinh(mrb_complex c)
+{
+  mrb_float x = cmath_creal(c);
+  mrb_float y = cmath_cimag(c);
+
+  if (F(fabs)(x) > 1e8F || F(fabs)(y) > 1e8F) {
+    /* Above this cutoff, c*c+1 == c*c; below it, c*c never overflows */
+    if (signbit(x)) {
+      return -(cmath_clog(-c) + (mrb_float)0.69314718055994530942);
+    } else {
+      return +(cmath_clog(+c) + (mrb_float)0.69314718055994530942);
+    }
+  } else {
+    return cmath_clog(c + cmath_csqrt(c*c + 1.0F));
+  }
+}
+
+static mrb_complex
+cmath_cacosh(mrb_complex c)
+{
+  mrb_float x = cmath_creal(c);
+  mrb_float y = cmath_cimag(c);
+
+  if (F(fabs)(x) > 1e8F || F(fabs)(y) > 1e8F) {
+    /* Above this cutoff, c*c-1 == c*c; below it, c*c never overflows */
+    return cmath_clog(c) + (mrb_float)0.69314718055994530942;
+  } else {
+    return cmath_clog(c + cmath_csqrt(c + 1.0F)*cmath_csqrt(c - 1.0F));
+  }
+}
+
+static mrb_complex
+cmath_catanh(mrb_complex c)
+{
+  return 0.5F*cmath_clog((1.0F + c)/(1.0F - c));
+}
+
+static mrb_complex
+cmath_casin(mrb_complex c)
+{
+  /* -i*asinh(i*c) */
+  mrb_float x1 = cmath_creal(c);
+  mrb_float y1 = cmath_cimag(c);
+  mrb_complex c2 = cmath_build_complex(-y1, +x1);
+  mrb_complex d2 = cmath_casinh(c2);
+  mrb_float x2 = cmath_creal(d2);
+  mrb_float y2 = cmath_cimag(d2);
+  return cmath_build_complex(+y2, -x2);
+}
+
+static mrb_complex
+cmath_cacos(mrb_complex c)
+{
+  /* -i*acosh(c) */
+  mrb_complex d2 = cmath_cacosh(c);
+  mrb_float x2 = cmath_creal(d2);
+  mrb_float y2 = cmath_cimag(d2);
+  mrb_complex d = cmath_build_complex(+y2, -x2);
+  if (signbit(cmath_creal(d))) {
+    d = -d;
+  }
+  return d;
+}
+
+static mrb_complex
+cmath_catan(mrb_complex c)
+{
+  /* -i*atanh(i*c) */
+  mrb_float x1 = cmath_creal(c);
+  mrb_float y1 = cmath_cimag(c);
+  mrb_complex c2 = cmath_build_complex(-y1, +x1);
+  mrb_complex d2 = cmath_catanh(c2);
+  mrb_float x2 = cmath_creal(d2);
+  mrb_float y2 = cmath_cimag(d2);
+  return cmath_build_complex(+y2, -x2);
 }
 
 /* exp(z): return the exponential of z */
@@ -190,10 +435,10 @@ cmath_log(mrb_state *mrb, mrb_value self) {
 
   if (n == 1) base = M_E;
   if (cmath_get_complex(mrb, z, &real, &imag) || real < 0.0) {
-    mrb_complex c = CX(real,imag);
-    c = FC(log)(c);
-    if (n == 2) c = CXDIVc(c, FC(log)(CX(base,0)));
-    return mrb_complex_new(mrb, creal(c), cimag(c));
+    mrb_complex c = cmath_build_complex(real,imag);
+    c = cmath_clog(c);
+    if (n == 2) c = CXDIVc(c, cmath_clog(cmath_build_complex(base,0)));
+    return mrb_complex_new(mrb, cmath_creal(c), cmath_cimag(c));
   }
   if (n == 1) return mrb_float_value(mrb, F(log)(real));
   return mrb_float_value(mrb, F(log)(real)/F(log)(base));
@@ -205,9 +450,9 @@ cmath_log10(mrb_state *mrb, mrb_value self) {
   mrb_value z = mrb_get_arg1(mrb);
   mrb_float real, imag;
   if (cmath_get_complex(mrb, z, &real, &imag) || real < 0.0) {
-    mrb_complex c = CX(real,imag);
-    c = CXDIVf(FC(log)(c),log(10));
-    return mrb_complex_new(mrb, creal(c), cimag(c));
+    mrb_complex c = cmath_build_complex(real,imag);
+    c = CXDIVf(cmath_clog(c),log(10));
+    return mrb_complex_new(mrb, cmath_creal(c), cmath_cimag(c));
   }
   return mrb_float_value(mrb, F(log10)(real));
 }
@@ -218,9 +463,9 @@ cmath_log2(mrb_state *mrb, mrb_value self) {
   mrb_value z = mrb_get_arg1(mrb);
   mrb_float real, imag;
   if (cmath_get_complex(mrb, z, &real, &imag) || real < 0.0) {
-    mrb_complex c = CX(real,imag);
-    c = CXDIVf(FC(log)(c),log(2.0));
-    return mrb_complex_new(mrb, creal(c), cimag(c));
+    mrb_complex c = cmath_build_complex(real,imag);
+    c = CXDIVf(cmath_clog(c),log(2.0));
+    return mrb_complex_new(mrb, cmath_creal(c), cmath_cimag(c));
   }
   return mrb_float_value(mrb, F(log2)(real));
 }
@@ -231,9 +476,9 @@ cmath_sqrt(mrb_state *mrb, mrb_value self) {
   mrb_value z = mrb_get_arg1(mrb);
   mrb_float real, imag;
   if (cmath_get_complex(mrb, z, &real, &imag) || real < 0.0) {
-    mrb_complex c = CX(real,imag);
-    c = FC(sqrt)(c);
-    return mrb_complex_new(mrb, creal(c), cimag(c));
+    mrb_complex c = cmath_build_complex(real,imag);
+    c = cmath_csqrt(c);
+    return mrb_complex_new(mrb, cmath_creal(c), cmath_cimag(c));
   }
   return mrb_float_value(mrb, F(sqrt)(real));
 }
