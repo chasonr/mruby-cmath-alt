@@ -197,10 +197,10 @@ cmath_csqrt(mrb_complex c)
   mrb_float y = cmath_cimag(c);
 
   if (y == 0.0F) {
-    if (x >= 0.0F) {
-      return cmath_build_complex(F(sqrt)(+x), 0.0F);
+    if (signbit(x)) {
+      return cmath_build_complex(0.0F, F(copysign)(F(sqrt)(-x), y));
     } else {
-      return cmath_build_complex(0.0F, F(sqrt)(-x));
+      return cmath_build_complex(F(sqrt)(+x), y);
     }
   } else {
 #ifdef MRB_USE_FLOAT32
