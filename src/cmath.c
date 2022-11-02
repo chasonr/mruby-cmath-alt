@@ -197,31 +197,51 @@ cmath_csqrt(mrb_complex c)
   mrb_float y = cmath_cimag(c);
 
   if (y == 0.0F) {
-    if (signbit(x)) {
+    if (isnan(x)) {
+      return cmath_build_complex(x, x);
+    } else if (signbit(x)) {
       return cmath_build_complex(0.0F, F(copysign)(F(sqrt)(-x), y));
     } else {
       return cmath_build_complex(F(sqrt)(+x), y);
     }
   } else {
+    if (isinf(x) && isinf(y)) {
+      return cmath_build_complex(INFINITY, y);
+    } else if (isinf(x) && isnan(y)) {
+      if (signbit(x)) {
+        return cmath_build_complex(y, INFINITY);
+      } else {
+        return c;
+      }
+    } else if (isinf(x)) {
+      if (signbit(x)) {
+        return cmath_build_complex(0.0F, F(copysign)(INFINITY, y));
+      } else {
+        return cmath_build_complex(INFINITY, F(copysign)(0.0F, y));
+      }
+    } else if (isinf(y)) {
+      return cmath_build_complex(INFINITY, y);
+    } else {
 #ifdef MRB_USE_FLOAT32
-    static const float cutoff = 1e38;
+      static const float cutoff = 1e38;
 #else
-    static const double cutoff = 1e308;
+      static const double cutoff = 1e308;
 #endif
-    _Bool scale = (F(fabs)(x) > cutoff || (F(fabs)(y) > cutoff));
-    if (scale) {
-      /* Prevent hypot from overflowing */
-      x /= 4.0F;
-      y /= 4.0F;
+      _Bool scale = (F(fabs)(x) > cutoff || (F(fabs)(y) > cutoff));
+      if (scale) {
+        /* Prevent hypot from overflowing */
+        x /= 4.0F;
+        y /= 4.0F;
+      }
+      mrb_float r = F(hypot)(x, y);
+      mrb_float t = F(atan2)(y, x);
+      r = F(sqrt)(r);
+      t /= 2.0F;
+      if (scale) {
+        r *= 2.0F;
+      }
+      return cmath_build_complex(r*F(cos)(t), r*F(sin)(t));
     }
-    mrb_float r = F(hypot)(x, y);
-    mrb_float t = F(atan2)(y, x);
-    r = F(sqrt)(r);
-    t /= 2.0F;
-    if (scale) {
-      r *= 2.0F;
-    }
-    return cmath_build_complex(r*F(cos)(t), r*F(sin)(t));
   }
 }
 
