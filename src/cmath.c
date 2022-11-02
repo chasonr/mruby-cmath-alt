@@ -176,6 +176,26 @@ cmath_cexp(mrb_complex c)
 {
   mrb_float x = cmath_creal(c);
   mrb_float y = cmath_cimag(c);
+
+  if (isnan(x)) {
+    if (y == 0.0F) {
+      return cmath_build_complex(NAN, y);
+    } else {
+      return cmath_build_complex(NAN, NAN);
+    }
+  }
+  if (x == +INFINITY) {
+    if (isnan(y) || isinf(y)) {
+      return cmath_build_complex(+INFINITY, NAN);
+    } else if (y == 0.0F) {
+      return c;
+    }
+  } else if (x == -INFINITY) {
+    if (isnan(y) || isinf(y)) {
+      return cmath_build_complex(+0.0F, F(copysign)(0.0F, y));
+    }
+  }
+
   mrb_float r = F(exp)(x);
   return cmath_build_complex(r*F(cos)(y), r*F(sin)(y));
 }
