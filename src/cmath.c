@@ -32,7 +32,7 @@ cmath_get_complex(mrb_state *mrb, mrb_value c, mrb_float *r, mrb_float *i)
     *i = 0;
     return FALSE;
   }
-  else if (mrb_obj_is_kind_of(mrb, c, mrb_class_get(mrb, "Complex"))) {
+  else if (mrb_type(c) == MRB_TT_COMPLEX) {
     mrb_complex_get(mrb, c, r, i);
     return TRUE;
   }
@@ -75,13 +75,13 @@ CXDIVc(mrb_complex a, mrb_complex b)
   if ((abi = cmath_cimag(b)) < 0)
     abi = - abi;
   if (abr <= abi) {
-    ratio = cmath_creal(b) / cmath_cimag(b) ;
+    ratio = cmath_creal(b) / cmath_cimag(b);
     den = cmath_cimag(a) * (1 + ratio*ratio);
     cr = (cmath_creal(a)*ratio + cmath_cimag(a)) / den;
     ci = (cmath_cimag(a)*ratio - cmath_creal(a)) / den;
   }
   else {
-    ratio = cmath_cimag(b) / cmath_creal(b) ;
+    ratio = cmath_cimag(b) / cmath_creal(b);
     den = cmath_creal(a) * (1 + ratio*ratio);
     cr = (cmath_creal(a) + cmath_cimag(a)*ratio) / den;
     ci = (cmath_cimag(a) - cmath_creal(a)*ratio) / den;
