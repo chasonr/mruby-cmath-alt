@@ -52,10 +52,8 @@ cmath_get_complex(mrb_state *mrb, mrb_value c, mrb_float *r, mrb_float *i)
 
 #ifdef MRB_USE_FLOAT32
 typedef _Fcomplex mrb_complex;
-#define CX(r,i) _FCbuild(r,i)
 #else
 typedef _Dcomplex mrb_complex;
-#define CX(r,i) _Cbuild(r,i)
 #endif
 
 static mrb_complex
@@ -99,9 +97,6 @@ typedef std::complex<float> mrb_complex;
 typedef std::complex<double> mrb_complex;
 #endif  /* MRB_USE_FLOAT32 */
 
-#define CX(r,i) mrb_complex(r,i)
-#define creal(c) c.real()
-#define cimag(c) c.imag()
 
 #else  /* cpp */
 
