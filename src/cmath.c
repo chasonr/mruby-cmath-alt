@@ -537,15 +537,23 @@ cmath_casin(mrb_complex c)
 static mrb_complex
 cmath_cacos(mrb_complex c)
 {
-  /* -i*acosh(c) */
-  mrb_complex d2 = cmath_cacosh(c);
-  mrb_float x2 = cmath_creal(d2);
-  mrb_float y2 = cmath_cimag(d2);
-  mrb_complex d = cmath_build_complex(+y2, -x2);
-  if (signbit(cmath_creal(d))) {
-    d = -d;
+  mrb_float x1 = cmath_creal(c);
+  mrb_float y1 = cmath_cimag(c);
+  if (x1 == 0.0F && isnan(y1)) {
+    return cmath_build_complex((mrb_float)1.57079632679489661923, NAN);
+  } else if (isnan(x1) && isinf(y1)) {
+    return cmath_build_complex(NAN, -y1);
+  } else {
+    /* -i*acosh(c) */
+    mrb_complex d2 = cmath_cacosh(c);
+    mrb_float x2 = cmath_creal(d2);
+    mrb_float y2 = cmath_cimag(d2);
+    mrb_complex d = cmath_build_complex(+y2, -x2);
+    if (signbit(cmath_creal(d))) {
+      d = -d;
+    }
+    return d;
   }
-  return d;
 }
 
 static mrb_complex
