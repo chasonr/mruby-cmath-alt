@@ -443,7 +443,13 @@ cmath_casinh(mrb_complex c)
   mrb_float x = cmath_creal(c);
   mrb_float y = cmath_cimag(c);
 
-  if (F(fabs)(x) > 1e8F || F(fabs)(y) > 1e8F) {
+  if (isnan(x)) {
+    if (isnan(y) || isinf(y)) {
+      return cmath_build_complex(y, NAN);
+    } else {
+      return cmath_build_complex(NAN, y == 0.0F ? y : NAN);
+    }
+  } else if (F(fabs)(x) > 1e8F || F(fabs)(y) > 1e8F) {
     /* Above this cutoff, c*c+1 == c*c; below it, c*c never overflows */
     if (signbit(x)) {
       return -(cmath_clog(-c) + (mrb_float)0.69314718055994530942);
@@ -451,7 +457,11 @@ cmath_casinh(mrb_complex c)
       return +(cmath_clog(+c) + (mrb_float)0.69314718055994530942);
     }
   } else {
-    return cmath_clog(c + cmath_csqrt(c*c + 1.0F));
+    if (signbit(x)) {
+      return -cmath_clog(-c + cmath_csqrt(c*c + 1.0F));
+    } else {
+      return +cmath_clog(+c + cmath_csqrt(c*c + 1.0F));
+    }
   }
 }
 
