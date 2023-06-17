@@ -260,61 +260,37 @@ cmath_csqrt(mrb_complex c)
   }
 }
 
+static mrb_complex cmath_csinh(mrb_complex c);
+static mrb_complex cmath_ccosh(mrb_complex c);
+static mrb_complex cmath_ctanh(mrb_complex c);
+
 static mrb_complex
 cmath_csin(mrb_complex c)
 {
-  mrb_float x = cmath_creal(c);
-  mrb_float y = cmath_cimag(c);
-  mrb_float cx = F(cos)(x);
-  mrb_float sx = F(sin)(x);
-  mrb_float cy = F(cosh)(y);
-  mrb_float sy = F(sinh)(y);
-  return cmath_build_complex(sx*cy, cx*sy);
+  /* -i*csinh(i*c) */
+  mrb_complex ci = cmath_build_complex(-cmath_cimag(c), +cmath_creal(c));
+  mrb_complex di = cmath_csinh(ci);
+  mrb_complex d = cmath_build_complex(+cmath_cimag(di), -cmath_creal(di));
+  return d;
 }
 
 static mrb_complex
 cmath_ccos(mrb_complex c)
 {
-  mrb_float x = cmath_creal(c);
-  mrb_float y = cmath_cimag(c);
-  mrb_float cx = F(cos)(x);
-  mrb_float sx = F(sin)(x);
-  mrb_float cy = F(cosh)(y);
-  mrb_float sy = F(sinh)(y);
-  return cmath_build_complex(cx*cy, -sx*sy);
+  /* ccosh(i*c) */
+  mrb_complex ci = cmath_build_complex(-cmath_cimag(c), +cmath_creal(c));
+  mrb_complex d = cmath_ccosh(ci);
+  return d;
 }
 
 static mrb_complex
 cmath_ctan(mrb_complex c)
 {
-#ifdef MRB_USE_FLOAT32
-  static const float cutoff1 = 53.0F;
-  static const float cutoff2 = 0x1.0A2B24P+3F;
-#else
-  static const double cutoff1 = 373.0;
-  static const double cutoff2 = 0x1.3001004048044P+4;
-#endif
-  mrb_float x = cmath_creal(c);
-  mrb_float y = cmath_cimag(c);
-  mrb_float cx = F(cos)(x);
-  mrb_float sx = F(sin)(x);
-  mrb_complex w;
-
-  if (F(fabs)(y) > cutoff1) {
-    /* Cutoff above which real(w) == 0.0 */
-    w = cmath_build_complex(F(copysign)(0.0F, sx*cx), F(copysign)(1.0F, y));
-  } else if (F(fabs)(y) > cutoff2) {
-    /* Cutoff above which |sy| == cy */
-    mrb_float cy = F(cosh)(y);
-    /* Not (sx*cx)/(cy*cy); cy*cy might overflow */
-    w = cmath_build_complex(sx*cx/cy/cy, F(copysign)(1.0F, y));
-  } else {
-    mrb_float cy = F(cosh)(y);
-    mrb_float sy = F(sinh)(y);
-    mrb_float d = cx*cx*cy*cy + sx*sx*sy*sy;
-    w = cmath_build_complex(sx*cx/d, sy*cy/d);
-  }
-  return w;
+  /* -i*ctanh(i*c) */
+  mrb_complex ci = cmath_build_complex(-cmath_cimag(c), +cmath_creal(c));
+  mrb_complex di = cmath_ctanh(ci);
+  mrb_complex d = cmath_build_complex(+cmath_cimag(di), -cmath_creal(di));
+  return d;
 }
 
 static mrb_complex
