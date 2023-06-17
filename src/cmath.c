@@ -397,25 +397,44 @@ cmath_ctanh(mrb_complex c)
 #endif
   mrb_float x = cmath_creal(c);
   mrb_float y = cmath_cimag(c);
-  mrb_float cy = F(cos)(y);
-  mrb_float sy = F(sin)(y);
-  mrb_complex w;
-
-  if (F(fabs)(x) > cutoff1) {
-    /* Cutoff above which imag(w) == 0.0 */
-    w = cmath_build_complex(F(copysign)(1.0F, x), 0.0F);
-  } else if (F(fabs)(x) > cutoff2) {
-    /* Cutoff above which |sx| == cx */
-    mrb_float cx = F(cosh)(x);
-    /* Not (sy*cy)/(cx*cx); cx*cx might overflow */
-    w = cmath_build_complex(F(copysign)(1.0F, x), sy*cy/cx/cx);
+  if (isnan(x)) {
+    if (isnan(y) || isinf(y)) {
+      return cmath_build_complex(NAN, NAN);
+    } else {
+      return cmath_build_complex(NAN, y == 0.0F ? y : NAN);
+    }
+  } else if (isinf(x)) {
+    if (isnan(y) || isinf(y)) {
+      return cmath_build_complex(F(copysign)(1.0F, x), +0.0);
+    } else {
+      mrb_float sy = F(sin)(2.0F*y);
+      return cmath_build_complex(F(copysign)(1.0F, x), F(copysign)(0.0F, sy));
+    }
   } else {
-    mrb_float cx = F(cosh)(x);
-    mrb_float sx = F(sinh)(x);
-    mrb_float d = cx*cx*cy*cy + sx*sx*sy*sy;
-    w = cmath_build_complex(sx*cx/d, sy*cy/d);
+    if (isnan(y) || isinf(y)) {
+      return cmath_build_complex(NAN, NAN);
+    } else {
+      mrb_float cy = F(cos)(y);
+      mrb_float sy = F(sin)(y);
+      mrb_complex w;
+
+      if (F(fabs)(x) > cutoff1) {
+        /* Cutoff above which imag(w) == 0.0 */
+        w = cmath_build_complex(F(copysign)(1.0F, x), 0.0F);
+      } else if (F(fabs)(x) > cutoff2) {
+        /* Cutoff above which |sx| == cx */
+        mrb_float cx = F(cosh)(x);
+        /* Not (sy*cy)/(cx*cx); cx*cx might overflow */
+        w = cmath_build_complex(F(copysign)(1.0F, x), sy*cy/cx/cx);
+      } else {
+        mrb_float cx = F(cosh)(x);
+        mrb_float sx = F(sinh)(x);
+        mrb_float d = cx*cx*cy*cy + sx*sx*sy*sy;
+        w = cmath_build_complex(sx*cx/d, sy*cy/d);
+      }
+      return w;
+    }
   }
-  return w;
 }
 
 static mrb_complex
