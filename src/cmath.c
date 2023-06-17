@@ -334,11 +334,33 @@ cmath_ccosh(mrb_complex c)
 {
   mrb_float x = cmath_creal(c);
   mrb_float y = cmath_cimag(c);
-  mrb_float cx = F(cosh)(x);
-  mrb_float sx = F(sinh)(x);
-  mrb_float cy = F(cos)(y);
-  mrb_float sy = F(sin)(y);
-  return cmath_build_complex(cx*cy, sx*sy);
+  if (isnan(x)) {
+    if (isnan(y) || isinf(y)) {
+      return cmath_build_complex(NAN, NAN);
+    } else {
+      return cmath_build_complex(NAN, y == 0.0F ? y : NAN);
+    }
+  } else if (isinf(x)) {
+    if (isnan(y) || isinf(y)) {
+      return cmath_build_complex(INFINITY, NAN);
+    } else if (y == 0.0F) {
+      return cmath_build_complex(INFINITY, signbit(x) ? -y : +y);
+    } else {
+      mrb_float cy = F(cos)(y);
+      mrb_float sy = F(sin)(y);
+      return cmath_build_complex(INFINITY*cy, x*sy);
+    }
+  } else {
+    if (isnan(y) || isinf(y)) {
+      return cmath_build_complex(NAN, x == 0.0F ? 0.0F : NAN);
+    } else {
+      mrb_float cx = F(cosh)(x);
+      mrb_float sx = F(sinh)(x);
+      mrb_float cy = F(cos)(y);
+      mrb_float sy = F(sin)(y);
+      return cmath_build_complex(cx*cy, sx*sy);
+    }
+  }
 }
 
 static mrb_complex
