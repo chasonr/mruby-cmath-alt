@@ -388,7 +388,7 @@ cmath_ctanh(mrb_complex c)
     }
   } else {
     if (isnan(y) || isinf(y)) {
-      return cmath_build_complex(NAN, NAN);
+      return cmath_build_complex(x == 0.0F ? x : NAN, NAN);
     } else {
       mrb_float cy = F(cos)(y);
       mrb_float sy = F(sin)(y);
@@ -447,7 +447,9 @@ cmath_cacosh(mrb_complex c)
   mrb_float x = cmath_creal(c);
   mrb_float y = cmath_cimag(c);
 
-  if (F(fabs)(x) > 1e8F || F(fabs)(y) > 1e8F) {
+  if (x == 0.0F && isnan(y)) {
+    return cmath_build_complex(NAN, (mrb_float)1.57079632679489661923);
+  } else if (F(fabs)(x) > 1e8F || F(fabs)(y) > 1e8F) {
     /* Above this cutoff, c*c-1 == c*c; below it, c*c never overflows */
     return cmath_clog(c) + (mrb_float)0.69314718055994530942;
   } else {
@@ -515,9 +517,7 @@ cmath_cacos(mrb_complex c)
 {
   mrb_float x1 = cmath_creal(c);
   mrb_float y1 = cmath_cimag(c);
-  if (x1 == 0.0F && isnan(y1)) {
-    return cmath_build_complex((mrb_float)1.57079632679489661923, NAN);
-  } else if (isnan(x1) && isinf(y1)) {
+  if (isnan(x1) && isinf(y1)) {
     return cmath_build_complex(NAN, -y1);
   } else {
     /* -i*acosh(c) */
