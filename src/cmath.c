@@ -482,7 +482,43 @@ cmath_cacosh(mrb_complex c)
 static mrb_complex
 cmath_catanh(mrb_complex c)
 {
-  return 0.5F*cmath_clog((1.0F + c)/(1.0F - c));
+  mrb_float x = cmath_creal(c);
+  mrb_float y = cmath_cimag(c);
+
+  if (isnan(x)) {
+    if (isnan(y)) {
+      return c;
+    } else if (isinf(y)) {
+      return cmath_build_complex(0.0F, F(copysign)((mrb_float)1.57079632679489661923, y));
+    } else {
+      return cmath_build_complex(x, NAN);
+    }
+  } else if (isinf(x)) {
+    if (isnan(y)) {
+      return cmath_build_complex(F(copysign)(0.0F, x), NAN);
+    } else {
+      return cmath_build_complex(F(copysign)(0.0F, x), F(copysign)((mrb_float)1.57079632679489661923, y));
+    }
+  } else {
+    if (isnan(y)) {
+      return cmath_build_complex(x == 0.0F ? x : NAN, y);
+    } else if (isinf(y)) {
+      return cmath_build_complex(F(copysign)(0.0F, x), F(copysign)((mrb_float)1.57079632679489661923, y));
+    } else {
+      if (x == 0.0F) {
+        return cmath_build_complex(x, F(atan)(y));
+      } else if (y == 0.0F) {
+        mrb_float q = (1.0F + x)/(1.0F - x);
+        if (signbit(q)) {
+          return cmath_build_complex(0.5F*F(log)(-q), F(copysign)((mrb_float)1.57079632679489661923, y));
+        } else {
+          return cmath_build_complex(0.5F*F(log)(+q), y);
+        }
+      } else {
+        return 0.5F*cmath_clog((1.0F + c)/(1.0F - c));
+      }
+    }
+  }
 }
 
 static mrb_complex
